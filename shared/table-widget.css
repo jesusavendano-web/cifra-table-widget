@@ -1,0 +1,48 @@
+/*
+  Custom del TableWidget. Sin transiciones ni keyframes propias:
+  la carga, paginación y expansión usan los estados nativos de s-table / s-button / s-modal.
+*/
+.c-tw {
+  background: var(--c-surface);
+  border-radius: var(--c-radius-card);
+  box-shadow: var(--c-shadow-card);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+.c-tw__head { display: flex; align-items: center; gap: 4px; padding: 12px 12px 4px 16px; min-height: 44px; }
+.c-tw__title { margin-right: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-tw__title s-link { color: inherit; }
+.c-tw__body { padding: 4px 8px 8px; flex: 1; min-height: 0; }
+.c-tw__scroll { max-height: var(--tw-body-height, 380px); overflow-y: auto; overscroll-behavior: contain; }
+.c-tw__more { display: flex; justify-content: center; padding: 12px 0 4px; }
+.c-tw__footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 8px 16px; border-top: 1px solid rgba(0,0,0,.06); }
+.c-tw__product { display: inline-flex; align-items: center; gap: 8px; max-width: 240px; min-width: 0; vertical-align: middle; }
+.c-tw[data-compact] .c-tw__product { max-width: 128px; }
+.c-tw__ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.c-tw .c-chart-empty { min-height: 240px; }
+
+/* Grid de dashboard (12 columnas) */
+.c-dash-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.c-dash-grid > * { grid-column: span var(--span, 12); min-width: 0; }
+.c-dash-grid > [hidden] { display: none; }
+@media (max-width: 760px) { .c-dash-grid > * { grid-column: span 12; } }
+
+/* Panel de controles del prototipo */
+.c-protocontrols { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 12px 16px; background: #fff8db; border: 1px dashed #d8b300; border-radius: 12px; }
+.c-protocontrols__group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.c-protocontrols__label { font-weight: 600; color: var(--c-text-secondary); }
+.c-protocontrols__note { flex-basis: 100%; color: var(--c-text-secondary); }
+
+/* Comparativa */
+.c-compare s-badge { vertical-align: middle; }
+
+/* Widget en el editor */
+.c-widget__head .c-card__title { flex: 1 1 auto; min-width: 0; }
+/* s-clickable del menú "…" estira su botón interno y se come el título */
+.c-widget__head s-clickable { display: block; flex: none; inline-size: 28px; }
+.c-widget .c-tw { box-shadow: none; border-radius: 0; background: transparent; }
+.c-widget .c-tw__head { display: none; }
+.c-widget .c-tw__body { padding: 0 4px 4px; }
+.c-widget .c-tw__scroll { --tw-body-height: 300px; }

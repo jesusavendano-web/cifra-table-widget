@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard · Customize</title>
+<meta name="shopify-api-key" content="prototype">
+<script src="https://cdn.shopify.com/shopifycloud/polaris-2.0-rc.js"></script>
+<link rel="stylesheet" href="shared/cifra.css">
+<link rel="stylesheet" href="shared/table-widget.css">
+<script src="shared/cifra.js" defer></script>
+<script src="shared/report-data.js" defer></script>
+<script src="shared/table-widget.js" defer></script>
+</head>
+<body class="no-fade">
+
+<!--
+  ENG-2308 · Basado en el prototipo dashboard-customize.html.
+  Nuevo: grupo "Custom reports" en la biblioteca con "Total sales by order" (visualización Display table).
+  Al soltarlo en el grid se crea un widget de tabla; el menú "…" ofrece "Display table" solo para reportes
+  configurados como tabla. El resize del widget cambia en vivo cuántas columnas se muestran (mínimo 4).
+  En el editor el widget es solo preview (25 filas): no se abre s-modal porque el editor ya es un max modal.
+
+  Pantalla: Dashboards › Customize (se abre desde el botón "Customize" del dashboard)
+  En la app es un editor a pantalla completa → en 2.0 corresponde a un App Bridge max modal
+  (ui-modal variant="max" + ui-title-bar con Discard / Reset Default / Save). Aquí se simula con un overlay.
+
+  Nativo → s-search-field, s-button, s-popover + s-choice-list (filtro), s-menu por widget (Visualization / Edit report).
+  Custom → panel de biblioteca con grupos y preview al hover, grid de 12 columnas, drag & drop (agregar y reordenar),
+           resize por columnas, slots vacíos, estado seleccionado.
+
+  Prototipo funcional: arrastra un reporte de la izquierda al grid, reordena con el ⠿, cambia el ancho con la esquina
+  azul del widget seleccionado, quita con ✕, cambia la visualización desde "…". Save/Discard se activan al cambiar algo.
+-->
+<s-page heading="Sales overview" inlineSize="large">
+  <s-link slot="breadcrumb-actions" href="index.html">Dashboards</s-link>
+  <s-text color="subdued">Editor abierto encima del dashboard. Ciérralo con ✕ para volver.</s-text>
+</s-page>
+
+<div class="c-editor" role="dialog" aria-modal="true" aria-label="Customize Sales overview" data-custom="Dashboard editor (App Bridge max modal)">
+  <div class="c-editor__frame">
+    <div class="c-editor__bar">
+      <div class="c-editor__title"><span class="c-editor__appicon" aria-hidden="true">C</span>Sales overview</div>
+      <s-button id="btn-discard" disabled>Discard</s-button>
+      <s-button id="btn-reset">Reset Default</s-button>
+      <s-button id="btn-save" variant="primary" disabled>Save</s-button>
+      <s-button variant="tertiary" icon="x" accessibilityLabel="Close" href="index.html"></s-button>
+    </div>
+
+    <div class="c-editor__body">
+      <!-- Biblioteca de reportes -->
+      <aside class="c-library" aria-label="Reports" data-custom="ReportLibrary">
+        <div class="c-library__head">
+          <s-search-field id="lib-search" label="Search reports" labelAccessibilityVisibility="exclusive" placeholder="Search"></s-search-field>
+          <s-button icon="filter" accessibilityLabel="Filter reports" commandFor="lib-filter"></s-button>
+          <s-popover id="lib-filter">
+            <s-box padding="base">
+              <s-stack gap="base">
+                <s-text fontWeight="semibold">Filter by</s-text>
+                <s-choice-list label="Categories" name="cat" multiple>
+                  <s-choice value="customer">Customer</s-choice>
+                  <s-choice value="profit">Profit</s-choice>
+                  <s-choice value="sales">Sales</s-choice>
+                  <s-choice value="cohort">Cohort</s-choice>
+                  <s-choice value="marketing">Marketing</s-choice>
+                  <s-choice value="behavior">Behavior</s-choice>
+                </s-choice-list>
+                <s-choice-list label="Data sources" name="src" multiple>
+                  <s-choice value="shopify">Shopify</s-choice>
+                  <s-choice value="meta">Meta Ads</s-choice>
+                  <s-choice value="google-ads">Google Ads</s-choice>
+                  <s-choice value="ga4">Google Analytics</s-choice>
+                  <s-choice value="klaviyo">Klaviyo</s-choice>
+                </s-choice-list>
+                <s-stack direction="inline"><s-button variant="tertiary">Clear</s-button></s-stack>
+              </s-stack>
+            </s-box>
+          </s-popover>
+        </div>
+        <div class="c-library__list" id="lib-list"></div>
+      </aside>
+
+      <!-- Grid -->
+      <div class="c-canvasgrid" id="grid" data-custom="DashboardGrid (12 cols)"></div>
+    </div>
+  </div>
+</div>
+
+<div class="c-preview" id="preview" hidden role="tooltip"></div>
+
+<script>
+(function () {
+  // ---------------------------------------------------------------- datos
+  const LIBRARY = {
+    'Custom reports': ['Total sales by order'],
+    Customer: ['New Customers by Discount Code', 'New Customers', 'Returning Customers Rate', 'Returning Customers', 'Customer Growth', 'Net Sales - New Customers', 'Net Sales - Returning Customers', 'New Customers by First Product', 'Total Customers', 'Revenue by Customer Type'],
+    Profit: ['Cifra Product Cost', 'Gross Profit by Product', 'Loss-Making Products', 'Shipping Expense', 'Custom Cost of Goods', 'Gross Profit by Discount Code', 'Contribution Margin'],
+    Sales: ['Net Revenue', 'Gross Sales - Returning Customers', 'Discount Code Performance', 'AOV - Returning Customers', 'Average Units Per Order', 'Total Sales over Time', 'AOV - New Customers', 'Top Products', 'Total Returned Items', 'Total Ordered Items', 'Total Refunds', 'Net Sales by Discount Code', 'Returns & Refunds', 'Net Sales by Product Type'],
+    Cohort: ['Customer Retention Cohorts', 'Customer LTV Cohorts'],
+    Marketing: ['Meta Ads ROAS', 'Google Ads ROAS', 'New Customer Acquisition Cost', 'Klaviyo Campaigns', 'Klaviyo Events', 'Meta Ad Spend', 'Google Ads CPC', 'Customer Acquisition Cost (CAC)', 'Blended ROAS', 'Google Ads Conversions', 'Google Ads Clicks', 'Marketing Efficiency', 'Google Ads Spend'],
+    Behavior: ['GA4 Engaged Sessions', 'GA4 Sessions', 'GA4 Bounce Rate'],
+  };
+  const DESCRIPTIONS = {
+    'New Customers': 'Total number of customers who made their first purchase within the date range',
+    'Returning Customers': 'Customers who placed more than one order within the date range',
+    'Blended ROAS': 'Revenue divided by total ad spend across all connected ad platforms',
+    'Top Products': 'Products ranked by net sales within the date range',
+    'Total sales by order': 'Custom report · Display table. 8 metrics grouped by month, sale ID, order and product',
+  };
+  // Custom reports guardados con visualización "Display table"
+  const TABLE_REPORTS = new Set(['Total sales by order']);
+  const newWidget = (t) => TABLE_REPORTS.has(t)
+    ? { id: ++uid, t, type: 'displayTable', tableReport: true, span: 8 }
+    : { id: ++uid, t, v: '—', d: '', dir: 'flat', type: 'kpi', span: 3, seed: 30 + uid };
+
+  const DEFAULT = [
+    { t: 'Gross Sales', v: '$9,505.93', d: '↗ 180.56%', dir: 'up', type: 'kpi', span: 3, seed: 1 },
+    { t: 'Total Discounts', v: '$0.00', d: '–', dir: 'flat', type: 'kpi', span: 3, flat: true },
+    { t: 'Total Returns', v: '$0.00', d: '–', dir: 'flat', type: 'kpi', span: 3, flat: true },
+    { t: 'Net Sales', v: '$9,505.93', d: '↗ 180.56%', dir: 'up', type: 'kpi', span: 3, seed: 1 },
+    { t: 'Cost of Goods', v: '$4,188.66', d: '↘ 106.67%', dir: 'down', type: 'kpi', span: 3, seed: 3 },
+    { t: 'Shipping Charged', v: '$904.29', d: '↗ 60.76%', dir: 'up', type: 'kpi', span: 3, seed: 5 },
+    { t: 'Payment Gateway Fees', v: '$0.00', d: '–', dir: 'flat', type: 'kpi', span: 3, flat: true },
+    { t: 'Blended Ad Spend', v: '$0.00', d: '–', dir: 'flat', type: 'kpi', span: 3, flat: true, nosource: true },
+    { t: 'Total sales by order', type: 'displayTable', tableReport: true, span: 12 },
+    { t: 'Gross Profit', v: '$5,317.28', d: '↗ 290.56%', dir: 'up', type: 'kpi', span: 6, seed: 7 },
+    { t: 'Net Profit', v: '-$58,706.44', d: '↗ 7.02%', dir: 'up', type: 'kpi', span: 6, seed: 9 },
+    { t: 'Gross Profit Margin', v: '55.9%', d: '↗ 39.40%', dir: 'up', type: 'chart', span: 6, seed: 11, suffix: '%' },
+    { t: 'Net Profit Margin', v: '-617.5%', d: '↗ 66.86%', dir: 'up', type: 'chart', span: 6, seed: 13, suffix: '%' },
+    { t: 'Discounts by Code', type: 'empty', span: 4 },
+    { t: 'Payment Fees by Gateway', type: 'donut', span: 4, donut: [] },
+    { t: 'Expenses by Category', v: '', d: '↗ 0.74%', dir: 'up', type: 'donut', span: 4, donut: [['payroll', 42572.71], ['rent', 11581.65], ['other', 8164.63], ['warehouse storage', 1011], ['software', 693.72]] },
+  ];
+
+  let state = JSON.parse(JSON.stringify(DEFAULT));
+  let selected = 0;
+  let uid = 0;
+  let tables = [];
+  state.forEach((w) => { w.id = ++uid; });
+
+  const grid = document.getElementById('grid');
+  const btnSave = document.getElementById('btn-save');
+  const btnDiscard = document.getElementById('btn-discard');
+
+  function setDirty(on) {
+    btnSave.disabled = !on; btnDiscard.disabled = !on;
+    if (on) { btnSave.removeAttribute('disabled'); btnDiscard.removeAttribute('disabled'); }
+    else { btnSave.setAttribute('disabled', ''); btnDiscard.setAttribute('disabled', ''); }
+  }
+
+  const grip = '<svg width="10" height="14" viewBox="0 0 10 14" aria-hidden="true"><g fill="currentColor"><circle cx="2" cy="2" r="1.3"/><circle cx="8" cy="2" r="1.3"/><circle cx="2" cy="7" r="1.3"/><circle cx="8" cy="7" r="1.3"/><circle cx="2" cy="12" r="1.3"/><circle cx="8" cy="12" r="1.3"/></g></svg>';
+
+  // ---------------------------------------------------------------- render
+  function body(w) {
+    const delta = w.d ? `<span class="c-delta c-delta--${w.dir}">${w.d}</span>` : '';
+    if (w.type === 'displayTable') return `<div data-tw-slot="${w.id}"></div>`;
+    if (w.type === 'empty' || (w.type === 'donut' && w.donut && !w.donut.length)) return `<div class="c-chart-empty">No data found for this date range</div>`;
+    if (w.type === 'donut') return `<div style="text-align:center;margin-bottom:4px">${delta}</div><span data-donut='${JSON.stringify(w.donut || [["A", 60], ["B", 25], ["C", 15]])}'></span>`;
+    if (w.type === 'table') return `<s-table><s-table-header-row><s-table-header listSlot="primary">Day</s-table-header><s-table-header format="numeric">${w.t}</s-table-header></s-table-header-row><s-table-body>
+        <s-table-row><s-table-cell>Oct 11</s-table-cell><s-table-cell>${w.v || '—'}</s-table-cell></s-table-row>
+        <s-table-row><s-table-cell>Oct 10</s-table-cell><s-table-cell>—</s-table-cell></s-table-row>
+        <s-table-row><s-table-cell>Oct 9</s-table-cell><s-table-cell>—</s-table-cell></s-table-row></s-table-body></s-table>`;
+    if (w.type === 'chart') return `<div class="c-row" style="margin-bottom:4px"><span class="c-kpi__value c-kpi__value--large">${w.v || '—'}</span>${delta}</div>
+        <span data-line="rand:${w.seed || 21}:30:45:35" data-prev="rand:${(w.seed || 21) + 1}:30:30:30" data-labels='["Sep 12","Sep 27","Oct 11"]' data-suffix="${w.suffix || ''}"></span>`;
+    const spark = w.flat ? '[0,0,0,0,0,0,0,0]' : `rand:${w.seed || 21}`;
+    return `<div class="c-kpi__row"><span><span class="c-kpi__value">${w.v || '—'}</span> ${delta}</span><span data-spark="${spark}"${w.flat ? '' : ` data-prev="rand:${(w.seed || 21) + 1}:30:60:30"`}></span></div>`;
+  }
+
+  function render() {
+    grid.innerHTML = state.map((w, i) => `
+      <article class="c-widget" style="--span:${w.span}" data-i="${i}" aria-selected="${i === selected}" tabindex="0">
+        <div class="c-widget__head">
+          <span class="c-grip" data-grip title="Drag to reorder">${grip}</span>
+          <h3 class="c-card__title">${w.t}</h3>
+          <s-clickable commandFor="wmenu-${w.id}" accessibilityLabel="Widget options" padding="small-200" borderRadius="base"><i class="c-icon-mask c-icon-mask--menu-horizontal" aria-hidden="true"></i></s-clickable>
+          <s-menu id="wmenu-${w.id}" accessibilityLabel="Widget options">
+            <s-section heading="Visualization">
+              ${(w.tableReport ? ['displayTable', 'kpi', 'chart'] : ['kpi', 'chart', 'table', 'donut']).map((v) => `<s-button data-viz="${v}" data-i="${i}" icon="${w.type === v ? 'check' : ''}">${{ kpi: 'KPI', chart: 'Chart', table: 'Table', donut: 'Donut', displayTable: 'Display table' }[v]}</s-button>`).join('')}
+            </s-section>
+            <s-section heading="Metrics">
+              <s-button icon="chart-line" href="#">Edit report</s-button>
+            </s-section>
+          </s-menu>
+          <s-button variant="tertiary" icon="x" accessibilityLabel="Remove ${w.t}" data-remove="${i}"></s-button>
+        </div>
+        <div class="c-widget__body">${body(w)}</div>
+        ${w.type === 'empty' || w.type === 'displayTable' || (w.donut && !w.donut.length) || w.nosource ? '' : '<footer class="c-card__footer c-card__footer--source"><span class="c-card__sources">From 1 source</span><span class="c-source" data-source="shopify" role="img" aria-label="Shopify" title="Shopify"></span></footer>'}
+        <span class="c-widget__resize" data-resize="${i}" title="Drag to resize"></span>
+      </article>`).join('') + Array.from({ length: 60 }, () => '<span class="c-slot" aria-hidden="true"></span>').join('');
+
+    tables.forEach((t) => t.destroy());
+    tables = [...grid.querySelectorAll('[data-tw-slot]')].map((slot) => CifraTableWidget.mount(slot, { mode: 'A', editable: true }));
+    grid.querySelectorAll('[data-spark]').forEach(CifraCharts.sparkline);
+    grid.querySelectorAll('[data-line]').forEach(CifraCharts.lineChart);
+    grid.querySelectorAll('[data-donut]').forEach(CifraCharts.donut);
+    CifraAssets.hydrate(grid);
+  }
+
+  function renderLibrary(q = '') {
+    const list = document.getElementById('lib-list');
+    q = q.trim().toLowerCase();
+    list.innerHTML = Object.entries(LIBRARY).map(([group, items]) => {
+      const f = items.filter((n) => n.toLowerCase().includes(q));
+      if (!f.length) return '';
+      return `<div class="c-library__group">${group}</div>` + f.map((n) => `<div class="c-library__item" draggable="true" data-report="${n}" title="${n}"><span>${n}</span>${TABLE_REPORTS.has(n) ? '<s-badge icon="table">Table</s-badge>' : ''}<span class="c-grip">${grip}</span></div>`).join('');
+    }).join('') || '<s-text color="subdued">No reports match.</s-text>';
+  }
+
+  // ---------------------------------------------------------------- interacción
+  grid.addEventListener('click', (e) => {
+    const rm = e.target.closest('[data-remove]');
+    if (rm) { state.splice(+rm.dataset.remove, 1); selected = -1; setDirty(true); render(); return; }
+    const viz = e.target.closest('[data-viz]');
+    if (viz) { const w = state[+viz.dataset.i]; w.type = viz.dataset.viz; if (w.type === 'donut' && !w.donut) w.donut = [['Shopify', 70], ['Meta', 20], ['Google', 10]]; setDirty(true); render(); return; }
+    const card = e.target.closest('.c-widget');
+    if (card) { selected = +card.dataset.i; grid.querySelectorAll('.c-widget').forEach((c) => c.setAttribute('aria-selected', String(c === card))); }
+  });
+
+  // Reordenar (arrastrando desde el ⠿) y agregar desde la biblioteca
+  let dragFrom = null;
+  grid.addEventListener('pointerdown', (e) => {
+    const g = e.target.closest('[data-grip]');
+    if (g) g.closest('.c-widget').setAttribute('draggable', 'true');
+  });
+  grid.addEventListener('dragstart', (e) => {
+    const card = e.target.closest('.c-widget');
+    if (!card) return;
+    dragFrom = +card.dataset.i; card.classList.add('is-dragging');
+    e.dataTransfer.setData('text/plain', 'widget'); e.dataTransfer.effectAllowed = 'move';
+  });
+  grid.addEventListener('dragend', () => { grid.querySelectorAll('.c-widget').forEach((c) => { c.classList.remove('is-dragging', 'is-over'); c.removeAttribute('draggable'); }); dragFrom = null; grid.classList.remove('is-dropping'); });
+  grid.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    grid.classList.add('is-dropping');
+    grid.querySelectorAll('.c-widget.is-over').forEach((c) => c.classList.remove('is-over'));
+    const over = e.target.closest('.c-widget'); if (over) over.classList.add('is-over');
+  });
+  grid.addEventListener('dragleave', (e) => { if (!grid.contains(e.relatedTarget)) grid.classList.remove('is-dropping'); });
+  grid.addEventListener('drop', (e) => {
+    e.preventDefault(); grid.classList.remove('is-dropping');
+    const over = e.target.closest('.c-widget');
+    const to = over ? +over.dataset.i : state.length;
+    const report = e.dataTransfer.getData('application/x-report');
+    if (report) {
+      state.splice(to, 0, newWidget(report));
+      selected = to;
+    } else if (dragFrom !== null && dragFrom !== to) {
+      const [w] = state.splice(dragFrom, 1);
+      state.splice(to > dragFrom ? to - 1 : to, 0, w);
+      selected = state.indexOf(w);
+    } else return;
+    setDirty(true); render();
+  });
+
+  const lib = document.getElementById('lib-list');
+  lib.addEventListener('dragstart', (e) => {
+    const it = e.target.closest('[data-report]'); if (!it) return;
+    e.dataTransfer.setData('application/x-report', it.dataset.report); e.dataTransfer.effectAllowed = 'copy';
+    preview.hidden = true;
+  });
+  // Doble clic agrega al final (alternativa accesible al drag)
+  lib.addEventListener('dblclick', (e) => {
+    const it = e.target.closest('[data-report]'); if (!it) return;
+    state.push(newWidget(it.dataset.report));
+    selected = state.length - 1; setDirty(true); render();
+    grid.lastElementChild && grid.querySelector(`[data-i="${selected}"]`).scrollIntoView({ block: 'nearest' });
+  });
+
+  // Preview al pasar el mouse
+  const preview = document.getElementById('preview');
+  lib.addEventListener('mouseover', (e) => {
+    const it = e.target.closest('[data-report]'); if (!it) return;
+    const n = it.dataset.report, r = it.getBoundingClientRect();
+    preview.innerHTML = `<s-stack gap="small"><s-text fontWeight="semibold">${n}</s-text><s-text color="subdued">${DESCRIPTIONS[n] || n + ' for the selected date range'}</s-text><span data-line="rand:${n.length}:24:50:30" data-labels="[]"></span><s-stack direction="inline" justifyContent="space-between" alignItems="center"><s-text color="subdued">From 1 source:</s-text><span class="c-source" aria-label="Shopify">S</span></s-stack></s-stack>`;
+    preview.querySelectorAll('[data-line]').forEach(CifraCharts.lineChart);
+    CifraAssets.hydrate(preview);
+    preview.style.left = (r.right + 8) + 'px';
+    preview.style.top = Math.min(r.top - 10, innerHeight - 220) + 'px';
+    preview.hidden = false;
+  });
+  lib.addEventListener('mouseleave', () => { preview.hidden = true; });
+
+  // Resize por columnas
+  grid.addEventListener('pointerdown', (e) => {
+    const h = e.target.closest('[data-resize]'); if (!h) return;
+    e.preventDefault();
+    const i = +h.dataset.resize, card = h.closest('.c-widget');
+    const left = card.getBoundingClientRect().left;
+    const col = (grid.clientWidth + 16) / 12;
+    const move = (ev) => {
+      const span = Math.max(2, Math.min(12, Math.round((ev.clientX - left + 16) / col)));
+      if (span !== state[i].span) { state[i].span = span; card.style.setProperty('--span', span); setDirty(true); }
+    };
+    const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); render(); };
+    addEventListener('pointermove', move); addEventListener('pointerup', up);
+  });
+
+  // Buscar
+  document.getElementById('lib-search').addEventListener('input', (e) => renderLibrary(e.target.value || ''));
+
+  // Barra de acciones
+  const reset = () => { state = JSON.parse(JSON.stringify(DEFAULT)); state.forEach((w) => { w.id = ++uid; }); selected = 0; render(); };
+  document.getElementById('btn-reset').addEventListener('click', () => { reset(); setDirty(true); });
+  btnDiscard.addEventListener('click', () => { reset(); setDirty(false); });
+  btnSave.addEventListener('click', () => { setDirty(false); });
+
+  document.addEventListener('DOMContentLoaded', () => { renderLibrary(); render(); });
+})();
+</script>
+</body>
+</html>

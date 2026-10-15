@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard · Table widget</title>
+<meta name="shopify-api-key" content="prototype">
+<script src="https://cdn.shopify.com/shopifycloud/polaris-2.0-rc.js"></script>
+<link rel="stylesheet" href="shared/cifra.css">
+<link rel="stylesheet" href="shared/table-widget.css">
+<script src="shared/cifra.js" defer></script>
+<script src="shared/report-data.js" defer></script>
+<script src="shared/table-widget.js" defer></script>
+</head>
+<body>
+
+<!--
+  ENG-2308 · Widget de tabla embebida en dashboard desde un custom report (Display table)
+  Pantalla: Dashboards › Sales overview (modo lectura)
+
+  Nativo → s-page, s-select, s-table (paginate / loading / variant), s-modal (expansión), s-section, s-badge
+  Custom → TableWidget (card + scroll interno + prioridad de columnas), KPI cards, panel de controles del prototipo
+-->
+<s-page heading="Sales overview" inlineSize="large">
+  <s-link slot="breadcrumb-actions" href="index.html">Dashboards</s-link>
+  <s-button slot="secondary-actions" icon="edit" href="customize.html">Customize</s-button>
+
+  <div class="c-stack">
+
+    <!-- Controles del prototipo (no forman parte del producto) -->
+    <div class="c-protocontrols" data-custom="Prototype controls">
+      <div class="c-protocontrols__group">
+        <span class="c-protocontrols__label">Alternativa UX</span>
+        <s-select id="ctl-mode" label="Alternativa UX" labelAccessibilityVisibility="exclusive">
+          <s-option value="A">A · 25 filas fijas (Shopify)</s-option>
+          <s-option value="B">B · Primeras 100 con scroll</s-option>
+          <s-option value="C">C · Paginación nativa (10/pág, máx. 100)</s-option>
+          <s-option value="D">D · Load more (25 → 100)</s-option>
+          <s-option value="E" selected>E · Preview 25 + expandir a modal</s-option>
+        </s-select>
+      </div>
+      <div class="c-protocontrols__group">
+        <span class="c-protocontrols__label">Ancho del widget</span>
+        <s-select id="ctl-size" label="Ancho del widget" labelAccessibilityVisibility="exclusive">
+          <s-option value="4">S · 4 de 12 columnas</s-option>
+          <s-option value="6">M · 6 de 12</s-option>
+          <s-option value="8">L · 8 de 12</s-option>
+          <s-option value="12" selected>XL · 12 de 12</s-option>
+        </s-select>
+      </div>
+      <div class="c-protocontrols__group">
+        <span class="c-protocontrols__label">Estado</span>
+        <s-select id="ctl-state" label="Estado" labelAccessibilityVisibility="exclusive">
+          <s-option value="data" selected>Con datos</s-option>
+          <s-option value="loading">Loading</s-option>
+          <s-option value="empty">Sin datos</s-option>
+          <s-option value="error">Error</s-option>
+        </s-select>
+      </div>
+      <span class="c-protocontrols__note" id="ctl-note"></span>
+    </div>
+
+    <!-- Barra de filtros -->
+    <div class="c-filterbar">
+      <button class="c-pill" type="button" data-custom="DateRangePicker"><s-icon type="calendar"></s-icon><span data-label>Last 365 days</span></button>
+      <button class="c-pill" type="button" data-custom="ComparisonPicker"><s-icon type="calendar-compare"></s-icon>No comparison</button>
+      <s-button commandFor="currency-menu" icon="currency-convert">GBP £</s-button>
+      <s-menu id="currency-menu" accessibilityLabel="Currency">
+        <s-button>USD $</s-button>
+        <s-button>EUR €</s-button>
+        <s-button>GBP £</s-button>
+      </s-menu>
+      <span class="c-filterbar__meta"><s-text color="subdued">Last data synced 7 min ago</s-text></span>
+    </div>
+
+    <!-- Fila de KPIs -->
+    <div class="c-grid-4">
+      <article class="c-card" data-custom="KpiCard"><div class="c-card__body"><h3 class="c-card__title">Gross Sales</h3>
+        <div class="c-kpi__row"><span><span class="c-kpi__value">£136,990.46</span> <span class="c-delta c-delta--up">↗ 42.10%</span></span><span data-spark="rand:1" data-prev="rand:2:30:60:30"></span></div></div>
+        <footer class="c-card__footer c-card__footer--source"><span class="c-card__sources">From 1 source</span><span class="c-source" data-source="shopify" role="img" aria-label="Shopify" title="Shopify"></span></footer></article>
+      <article class="c-card" data-custom="KpiCard"><div class="c-card__body"><h3 class="c-card__title">Net Sales</h3>
+        <div class="c-kpi__row"><span><span class="c-kpi__value">£133,667.59</span> <span class="c-delta c-delta--up">↗ 38.72%</span></span><span data-spark="rand:3" data-prev="rand:4:30:60:30"></span></div></div>
+        <footer class="c-card__footer c-card__footer--source"><span class="c-card__sources">From 1 source</span><span class="c-source" data-source="shopify" role="img" aria-label="Shopify" title="Shopify"></span></footer></article>
+      <article class="c-card" data-custom="KpiCard"><div class="c-card__body"><h3 class="c-card__title">Taxes</h3>
+        <div class="c-kpi__row"><span><span class="c-kpi__value">£22,957.35</span> <span class="c-delta c-delta--up">↗ 12.04%</span></span><span data-spark="rand:5" data-prev="rand:6:30:60:30"></span></div></div>
+        <footer class="c-card__footer c-card__footer--source"><span class="c-card__sources">From 1 source</span><span class="c-source" data-source="shopify" role="img" aria-label="Shopify" title="Shopify"></span></footer></article>
+      <article class="c-card" data-custom="KpiCard"><div class="c-card__body"><h3 class="c-card__title">Total Sales</h3>
+        <div class="c-kpi__row"><span><span class="c-kpi__value">£158,813.94</span> <span class="c-delta c-delta--up">↗ 40.55%</span></span><span data-spark="rand:7" data-prev="rand:8:30:60:30"></span></div></div>
+        <footer class="c-card__footer c-card__footer--source"><span class="c-card__sources">From 1 source</span><span class="c-source" data-source="shopify" role="img" aria-label="Shopify" title="Shopify"></span></footer></article>
+    </div>
+
+    <!-- Grid: widget de tabla + gráfica que rellena el resto de la fila -->
+    <div class="c-dash-grid" id="dash-grid">
+      <section id="table-widget" style="--span:12" aria-label="Total sales by order"></section>
+      <article class="c-card" id="filler" style="--span:0" hidden data-custom="ChartCard">
+        <div class="c-card__body"><h3 class="c-card__title">Total Sales over Time</h3>
+          <div class="c-row" style="margin-bottom:4px"><span class="c-kpi__value c-kpi__value--large">£158,813.94</span></div>
+          <span data-line="rand:21:30:45:35" data-labels='["Nov 2025","Apr 2026","Oct 2026"]'></span></div>
+        <footer class="c-card__footer c-card__footer--source"><span class="c-card__sources">From 1 source</span><span class="c-source" data-source="shopify" role="img" aria-label="Shopify" title="Shopify"></span></footer>
+      </article>
+    </div>
+
+    <!-- Comparativa de alternativas -->
+    <s-section heading="Alternativas para el volumen de filas">
+      <s-grid gridTemplateColumns="repeat(auto-fit, minmax(240px, 1fr))" gap="base">
+        <s-box padding="base" border="base" borderRadius="base" background="base">
+          <s-stack gap="small-200">
+            <s-stack direction="inline" gap="small-200" alignItems="center"><s-heading>A · 25 filas fijas</s-heading><s-badge tone="success">Nativo</s-badge></s-stack>
+            <s-text color="subdued">A favor</s-text><s-paragraph>Paridad con Shopify. Altura y costo de carga predecibles.</s-paragraph>
+            <s-text color="subdued">En contra</s-text><s-paragraph>Para ver más hay que salir del dashboard al reporte.</s-paragraph>
+          </s-stack>
+        </s-box>
+        <s-box padding="base" border="base" borderRadius="base" background="base">
+          <s-stack gap="small-200">
+            <s-stack direction="inline" gap="small-200" alignItems="center"><s-heading>B · Primeras 100 con scroll</s-heading><s-badge tone="warning">Parcial</s-badge></s-stack>
+            <s-text color="subdued">A favor</s-text><s-paragraph>Más datos sin salir del dashboard.</s-paragraph>
+            <s-text color="subdued">En contra</s-text><s-paragraph>Scroll anidado dentro de la página. El header de s-table no queda fijo (vive en shadow DOM) y se pierde al bajar. 4× más carga.</s-paragraph>
+          </s-stack>
+        </s-box>
+        <s-box padding="base" border="base" borderRadius="base" background="base">
+          <s-stack gap="small-200">
+            <s-stack direction="inline" gap="small-200" alignItems="center"><s-heading>C · Paginación nativa</s-heading><s-badge tone="success">Nativo</s-badge></s-stack>
+            <s-text color="subdued">A favor</s-text><s-paragraph>100% nativo: paginate + nextpage + loading. Altura fija sin scroll interno, el header siempre se ve.</s-paragraph>
+            <s-text color="subdued">En contra</s-text><s-paragraph>Más clics y se pierde contexto entre páginas. 10 filas por página para no exceder la altura del widget.</s-paragraph>
+          </s-stack>
+        </s-box>
+        <s-box padding="base" border="base" borderRadius="base" background="base">
+          <s-stack gap="small-200">
+            <s-stack direction="inline" gap="small-200" alignItems="center"><s-heading>D · Load more</s-heading><s-badge tone="warning">Parcial</s-badge></s-stack>
+            <s-text color="subdued">A favor</s-text><s-paragraph>Carga bajo demanda con feedback nativo (s-button loading).</s-paragraph>
+            <s-text color="subdued">En contra</s-text><s-paragraph>Mismo scroll anidado que B. No se sabe cuántas filas hay hasta llegar al final.</s-paragraph>
+          </s-stack>
+        </s-box>
+        <s-box padding="base" border="base" borderRadius="base" background="base">
+          <s-stack gap="small-200">
+            <s-stack direction="inline" gap="small-200" alignItems="center"><s-heading>E · Preview + expandir</s-heading><s-badge tone="success">Nativo</s-badge><s-badge tone="info">Recomendada</s-badge></s-stack>
+            <s-text color="subdued">A favor</s-text><s-paragraph>Dashboard limpio como A. s-modal large-100 con todas las filas y columnas, búsqueda y paginación nativa; apertura y cierre con la transición nativa del modal.</s-paragraph>
+            <s-text color="subdued">En contra</s-text><s-paragraph>Un paso extra. En el editor (ya es un max modal) no se puede anidar otro modal: ahí solo se muestra el preview.</s-paragraph>
+          </s-stack>
+        </s-box>
+      </s-grid>
+    </s-section>
+  </div>
+</s-page>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const host = document.getElementById('table-widget');
+  const filler = document.getElementById('filler');
+  const note = document.getElementById('ctl-note');
+  const widget = CifraTableWidget.mount(host, { mode: 'E' });
+
+  const NOTES = {
+    A: 'Igual que Shopify: 25 filas y link al reporte completo. El botón de expandir del header abre el modal en todas las alternativas.',
+    B: 'Hasta 100 filas con scroll interno. Baja dentro del widget: el header nativo de s-table no queda fijo.',
+    C: 'Usa paginate / hasNextPage / nextpage de s-table. Cada cambio de página muestra el estado loading nativo.',
+    D: '"Show 25 more" usa s-button loading y agrega filas hasta 100.',
+    E: 'Preview de 25 filas. "View all rows" o el ícono de expandir abren s-modal size="large-100" con búsqueda y paginación de 50.',
+  };
+  const updateNote = () => { note.textContent = NOTES[document.getElementById('ctl-mode').value] + ` · Columnas visibles: ${widget.columnsVisible()}.`; };
+
+  document.getElementById('ctl-mode').addEventListener('change', (e) => { widget.setMode(e.target.value); updateNote(); });
+  document.getElementById('ctl-state').addEventListener('change', (e) => widget.setState(e.target.value));
+  document.getElementById('ctl-size').addEventListener('change', (e) => {
+    const span = +e.target.value;
+    host.style.setProperty('--span', span);
+    filler.hidden = span === 12;
+    filler.style.setProperty('--span', 12 - span);
+    widget.measure();
+    updateNote();
+  });
+  updateNote();
+});
+</script>
+</body>
+</html>
