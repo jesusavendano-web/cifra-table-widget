@@ -4,8 +4,8 @@ Prototipo HTML del widget de dashboard para custom reports con visualización **
 
 ## Páginas
 
-- `index.html`: dashboard en modo lectura. El panel amarillo cambia la alternativa UX (A–E), el ancho del widget (S/M/L/XL) y el estado (datos, loading, vacío, error). Al final está la comparativa de alternativas.
-- `customize.html`: el editor de referencia con el grupo "Custom reports". "Total sales by order" se agrega con doble clic o arrastrándolo; el menú "…" ofrece "Display table".
+- `index.html`: dashboard en modo lectura. El panel amarillo cambia la alternativa UX (A–E), el ancho del widget (S/M/L/XL) y el estado (datos, loading, vacío, error, sin permisos). Al final están la comparativa de alternativas, la de columnas en widgets angostos y la recomendación final (E).
+- `customize.html`: el editor de referencia con el grupo "Custom reports". "Total sales by order" (Display table) se agrega como widget de tabla y su menú "…" ofrece "Display table"; "Net sales by month" (line chart) se agrega como gráfica y no ofrece "Display table".
 
 ## Correr local
 

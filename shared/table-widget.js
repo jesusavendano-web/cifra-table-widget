@@ -71,7 +71,7 @@
     const menuId = `tw-menu-${id}`;
     const st = {
       mode: opts.mode || 'A',
-      state: opts.state || 'data', // data | loading | empty | error
+      state: opts.state || 'data', // data | loading | empty | error | locked
       page: 0,
       loaded: 25,
       prio: 1,
@@ -94,6 +94,13 @@
       if (st.state === 'error') return `<s-banner tone="critical" heading="This report couldn't load">
           <s-paragraph>Something went wrong while fetching the data. Try again in a moment.</s-paragraph>
           <s-button slot="secondary-actions" data-tw="retry">Try again</s-button></s-banner>`;
+      // Sin permisos: no se piden datos ni se muestran columnas/totales (podrían filtrar información)
+      if (st.state === 'locked') return `<div class="c-tw__locked"><s-stack gap="small-200" alignItems="center">
+          <s-icon type="lock"></s-icon>
+          <s-heading>You don't have access to this report</s-heading>
+          <s-paragraph color="subdued">This custom report uses data your role can't view. Ask the store owner to give you access to Reports.</s-paragraph>
+          <s-button data-tw="request">${st.requested ? 'Access requested' : 'Request access'}</s-button>
+        </s-stack></div>`;
 
       const all = rep.rows.slice(0, CAP);
       if (st.mode === 'A') return `<div class="c-tw__scroll">${table(cols, rep.rows.slice(0, 25), `variant="${variant}"`)}</div>`;
@@ -125,6 +132,9 @@
       if (st.mode === 'C') { const s = st.page * 10 + 1; left = `${s}–${Math.min(s + 9, CAP)} of ${CAP} rows`; right = `<s-link href="#" data-tw="report">View full report</s-link>`; }
       if (st.mode === 'D') { left = `${st.loaded} of ${CAP} rows`; right = st.loaded >= CAP ? `<s-link href="#" data-tw="report">View all ${total} in report</s-link>` : ''; }
       if (st.mode === 'E') { left = `25 of ${total} rows`; right = `<s-button variant="tertiary" icon="maximize" commandFor="${modalId}" command="--show">View all ${total} rows</s-button>`; }
+      // Columnas ocultas por ancho: se avisa en el footer; el modal y el reporte muestran todas
+      const shown = visibleCols().length, all = rep.columns.length;
+      if (shown < all) left += ` · ${shown} of ${all} columns`;
       return `<footer class="c-card__footer c-tw__footer"><s-text color="subdued">${left}</s-text>${right}</footer>`;
     }
 
@@ -147,10 +157,12 @@
     function render() {
       const scroller = host.querySelector('.c-tw__scroll');
       const keep = scroller ? scroller.scrollTop : 0;
+      const locked = st.state === 'locked';
       host.innerHTML = `
         <div class="c-tw__head">
-          <h3 class="c-card__title c-tw__title"><s-link href="#" data-tw="report">${R().title}</s-link></h3>
-          ${opts.editable ? '' : `<s-button variant="tertiary" icon="maximize" accessibilityLabel="Expand ${R().title}" commandFor="${modalId}" command="--show"></s-button>`}
+          <h3 class="c-card__title c-tw__title">${locked ? R().title : `<s-link href="#" data-tw="report">${R().title}</s-link>`}</h3>
+          ${locked ? '<s-badge icon="lock">Locked</s-badge>' : ''}
+          ${opts.editable || locked ? '' : `<s-button variant="tertiary" icon="maximize" accessibilityLabel="Expand ${R().title}" commandFor="${modalId}" command="--show"></s-button>`}
           ${opts.headExtra || ''}
         </div>
         <div class="c-tw__body">${body()}</div>
@@ -196,6 +208,7 @@
       if (!a) return;
       const k = a.dataset.tw;
       if (k === 'report') { e.preventDefault(); opts.onOpenReport ? opts.onOpenReport() : null; }
+      if (k === 'request' && !st.requested) { st.requested = true; render(); }
       if (k === 'retry') { st.state = 'loading'; render(); setTimeout(() => { st.state = 'data'; render(); }, 900); }
       if (k === 'more') {
         a.setAttribute('loading', '');

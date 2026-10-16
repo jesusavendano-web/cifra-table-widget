@@ -55,6 +55,7 @@
           <s-option value="loading">Loading</s-option>
           <s-option value="empty">Sin datos</s-option>
           <s-option value="error">Error</s-option>
+          <s-option value="locked">Sin permisos (locked)</s-option>
         </s-select>
       </div>
       <span class="c-protocontrols__note" id="ctl-note"></span>
@@ -140,6 +141,47 @@
         </s-box>
       </s-grid>
     </s-section>
+
+    <!-- Columnas en widgets angostos -->
+    <s-section heading="Columnas cuando el widget es angosto">
+      <s-grid gridTemplateColumns="repeat(auto-fit, minmax(240px, 1fr))" gap="base">
+        <s-box padding="base" border="base" borderRadius="base" background="base">
+          <s-stack gap="small-200">
+            <s-stack direction="inline" gap="small-200" alignItems="center"><s-heading>Priorizar columnas</s-heading><s-badge tone="info">Elegida</s-badge></s-stack>
+            <s-text color="subdued">A favor</s-text><s-paragraph>Siempre se ven las 4 columnas clave (Month, Order, Product, Total sales). Sin scroll horizontal dentro de un widget que ya tiene scroll vertical. El footer avisa "4 of 11 columns" y el modal muestra todas.</s-paragraph>
+            <s-text color="subdued">En contra</s-text><s-paragraph>Hay que definir una prioridad por columna. Para custom reports: dimensiones primero, luego la métrica de VISUALIZE, luego el resto en el orden de SHOW.</s-paragraph>
+          </s-stack>
+        </s-box>
+        <s-box padding="base" border="base" borderRadius="base" background="base">
+          <s-stack gap="small-200">
+            <s-stack direction="inline" gap="small-200" alignItems="center"><s-heading>Scroll horizontal</s-heading><s-badge tone="success">Nativo</s-badge></s-stack>
+            <s-text color="subdued">A favor</s-text><s-paragraph>Cero configuración: s-table ya hace scroll horizontal cuando no caben las columnas.</s-paragraph>
+            <s-text color="subdued">En contra</s-text><s-paragraph>Scroll en dos ejes dentro de una card pequeña. En S/M se ve 1–2 columnas y la métrica principal (a la derecha) queda fuera de vista.</s-paragraph>
+          </s-stack>
+        </s-box>
+        <s-box padding="base" border="base" borderRadius="base" background="base">
+          <s-stack gap="small-200">
+            <s-stack direction="inline" gap="small-200" alignItems="center"><s-heading>Variante lista (mobile)</s-heading><s-badge tone="success">Nativo</s-badge></s-stack>
+            <s-text color="subdued">A favor</s-text><s-paragraph>Bajo 380px s-table pasa a variant="list" con listSlot por columna: cada fila es una tarjeta con producto, orden y total.</s-paragraph>
+            <s-text color="subdued">En contra</s-text><s-paragraph>Se pierde la lectura en columnas; la fila de totales se ve como un ítem más.</s-paragraph>
+          </s-stack>
+        </s-box>
+      </s-grid>
+    </s-section>
+
+    <!-- Recomendación final -->
+    <s-section heading="Recomendación">
+      <s-stack gap="base">
+        <s-paragraph><s-text fontWeight="bold">Alternativa E: preview de 25 filas + expandir a s-modal large-100</s-text>, con prioridad de columnas según el ancho del widget.</s-paragraph>
+        <s-unordered-list>
+          <s-list-item>Mantiene la paridad con Shopify (25 filas, mismo costo de carga que A) y el dashboard no gana scroll anidado.</s-list-item>
+          <s-list-item>Ver todas las filas y columnas no saca al usuario del dashboard: el modal trae búsqueda y paginación nativa de s-table.</s-list-item>
+          <s-list-item>100% componentes nativos. B y D quedan descartadas porque el header de s-table no puede ser sticky (shadow DOM).</s-list-item>
+          <s-list-item>Fallback: C (paginación en el widget) si se necesita navegar sin modal, por ejemplo dentro del editor, donde no se puede anidar un modal.</s-list-item>
+        </s-unordered-list>
+        <s-paragraph color="subdued">Estados cubiertos: con datos, loading (s-table loading), sin datos, error con reintento y sin permisos (no se cargan datos ni encabezados; el título deja de ser link y se ofrece "Request access").</s-paragraph>
+      </s-stack>
+    </s-section>
   </div>
 </s-page>
 
@@ -160,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const updateNote = () => { note.textContent = NOTES[document.getElementById('ctl-mode').value] + ` · Columnas visibles: ${widget.columnsVisible()}.`; };
 
   document.getElementById('ctl-mode').addEventListener('change', (e) => { widget.setMode(e.target.value); updateNote(); });
-  document.getElementById('ctl-state').addEventListener('change', (e) => widget.setState(e.target.value));
+  document.getElementById('ctl-state').addEventListener('change', (e) => { widget.setState(e.target.value); updateNote(); });
   document.getElementById('ctl-size').addEventListener('change', (e) => {
     const span = +e.target.value;
     host.style.setProperty('--span', span);

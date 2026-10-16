@@ -92,7 +92,7 @@
 (function () {
   // ---------------------------------------------------------------- datos
   const LIBRARY = {
-    'Custom reports': ['Total sales by order'],
+    'Custom reports': ['Total sales by order', 'Net sales by month'],
     Customer: ['New Customers by Discount Code', 'New Customers', 'Returning Customers Rate', 'Returning Customers', 'Customer Growth', 'Net Sales - New Customers', 'Net Sales - Returning Customers', 'New Customers by First Product', 'Total Customers', 'Revenue by Customer Type'],
     Profit: ['Cifra Product Cost', 'Gross Profit by Product', 'Loss-Making Products', 'Shipping Expense', 'Custom Cost of Goods', 'Gross Profit by Discount Code', 'Contribution Margin'],
     Sales: ['Net Revenue', 'Gross Sales - Returning Customers', 'Discount Code Performance', 'AOV - Returning Customers', 'Average Units Per Order', 'Total Sales over Time', 'AOV - New Customers', 'Top Products', 'Total Returned Items', 'Total Ordered Items', 'Total Refunds', 'Net Sales by Discount Code', 'Returns & Refunds', 'Net Sales by Product Type'],
@@ -106,12 +106,17 @@
     'Blended ROAS': 'Revenue divided by total ad spend across all connected ad platforms',
     'Top Products': 'Products ranked by net sales within the date range',
     'Total sales by order': 'Custom report · Display table. 8 metrics grouped by month, sale ID, order and product',
+    'Net sales by month': 'Custom report · Line chart. Net sales grouped by month (not a Display table, so it is added as a chart)',
   };
-  // Custom reports guardados con visualización "Display table"
+  // Custom reports guardados con visualización "Display table". El resto respeta su visualización guardada
+  // y no ofrece "Display table" en el menú: solo un reporte configurado como tabla se embebe como tabla.
   const TABLE_REPORTS = new Set(['Total sales by order']);
+  const CHART_REPORTS = { 'Net sales by month': { v: '£133,667.59', d: '↗ 38.72%', dir: 'up' } };
   const newWidget = (t) => TABLE_REPORTS.has(t)
     ? { id: ++uid, t, type: 'displayTable', tableReport: true, span: 8 }
-    : { id: ++uid, t, v: '—', d: '', dir: 'flat', type: 'kpi', span: 3, seed: 30 + uid };
+    : CHART_REPORTS[t]
+      ? { id: ++uid, t, ...CHART_REPORTS[t], type: 'chart', span: 6, seed: 40 + uid }
+      : { id: ++uid, t, v: '—', d: '', dir: 'flat', type: 'kpi', span: 3, seed: 30 + uid };
 
   const DEFAULT = [
     { t: 'Gross Sales', v: '$9,505.93', d: '↗ 180.56%', dir: 'up', type: 'kpi', span: 3, seed: 1 },
@@ -202,7 +207,7 @@
     list.innerHTML = Object.entries(LIBRARY).map(([group, items]) => {
       const f = items.filter((n) => n.toLowerCase().includes(q));
       if (!f.length) return '';
-      return `<div class="c-library__group">${group}</div>` + f.map((n) => `<div class="c-library__item" draggable="true" data-report="${n}" title="${n}"><span>${n}</span>${TABLE_REPORTS.has(n) ? '<s-badge icon="table">Table</s-badge>' : ''}<span class="c-grip">${grip}</span></div>`).join('');
+      return `<div class="c-library__group">${group}</div>` + f.map((n) => `<div class="c-library__item" draggable="true" data-report="${n}" title="${n}"><span>${n}</span>${TABLE_REPORTS.has(n) ? '<s-badge icon="table">Table</s-badge>' : CHART_REPORTS[n] ? '<s-badge icon="chart-line">Chart</s-badge>' : ''}<span class="c-grip">${grip}</span></div>`).join('');
     }).join('') || '<s-text color="subdued">No reports match.</s-text>';
   }
 

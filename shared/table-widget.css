@@ -22,6 +22,8 @@
 .c-tw[data-compact] .c-tw__product { max-width: 128px; }
 .c-tw__ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .c-tw .c-chart-empty { min-height: 240px; }
+.c-tw__locked { display: flex; align-items: center; justify-content: center; min-height: 240px; padding: 16px; text-align: center; }
+.c-tw__locked s-paragraph { max-width: 360px; }
 
 /* Grid de dashboard (12 columnas) */
 .c-dash-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; align-items: start; }
